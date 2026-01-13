@@ -5,11 +5,10 @@ import os
 from dotenv import load_dotenv
 import altair as alt
 
-# 1. Configuration & Setup
+# Setup
 st.set_page_config(page_title="AI Budget Agent", layout="wide", page_icon="🤑")
 load_dotenv(override=True)
 
-# --- CUSTOM DARK MODE & CLEAN UP STYLING ---
 st.markdown("""
 <style>
     /* Force Dark Theme Colors */
@@ -71,12 +70,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Configure the Brain
+# the Brain
 api_key = os.getenv("GOOGLE_API_KEY")
 if api_key:
     genai.configure(api_key=api_key)
 
-# 2. Logic Engine
+
 def categorize_50_30_20(category):
     cat_lower = str(category).lower()
     needs = ['rent', 'mortgage', 'utilities', 'groceries', 'insurance', 'medical', 'transport', 'gas', 'electric', 'water', 'bill', 'health', 'education']
@@ -101,9 +100,9 @@ def get_grade(needs_pct, wants_pct, savings_pct):
     elif score >= 60: return "C (Fair)"
     else: return "Needs Work"
 
-# 3. Main Application
+#Main App
 def main():
-    # --- INITIALIZE SESSION STATE FIRST ---
+    
     if "messages" not in st.session_state:
         st.session_state.messages = []
         st.session_state.messages.append({"role": "assistant", "content": "Hello! I am your AI Financial Agent. I can see your budget data. How can I help?"})
@@ -111,12 +110,11 @@ def main():
     if "current_view" not in st.session_state:
         st.session_state.current_view = "📊 Analytics Dashboard"
 
-    # --- UI START ---
     st.title("🤑 AI Financial Agent")
     st.caption("Powered by Gemini 2.0 Flash | RAG Enabled")
     st.divider()
 
-    # --- SIDEBAR ---
+  
     st.sidebar.header("⚙️ User Profile")
     income = st.sidebar.number_input("Monthly Income ($)", value=6000, step=100)
     st.sidebar.divider()
@@ -164,22 +162,18 @@ def main():
                  num_months = transactions['Date'].dt.to_period('M').nunique()
                  if num_months < 1: num_months = 1
 
-    # Load Benchmarks (Handle missing file gracefully)
+    # Load Benchmarks 
     try:
         benchmarks_df = pd.read_csv("benchmarks.csv")
     except:
         benchmarks_df = pd.DataFrame()
-
-    # --- NAVIGATION LOGIC ---
     options = ["📊 Analytics Dashboard", "🎛️ Savings Simulator", "🤖 Gemini Chat Agent"]
     
-    # Determine correct index based on current state
     try:
         nav_index = options.index(st.session_state.current_view)
     except ValueError:
         nav_index = 0
-        
-    # Navigation Widget (Removed 'key' to allow programmatic switching)
+
     selected_option = st.radio(
         "Navigate",
         options,
@@ -188,12 +182,10 @@ def main():
         label_visibility="collapsed"
     )
     
-    # Update State if user clicks the button manually
     if selected_option != st.session_state.current_view:
         st.session_state.current_view = selected_option
         st.rerun()
 
-    # Initialize variables to avoid errors if empty
     grade = "N/A"
     monthly_spend = 0
     needs_monthly = 0
@@ -201,7 +193,6 @@ def main():
     savings_monthly = 0
     cat_str = "No data"
     
-    # 1. PROCESS DATA
     if not transactions.empty and 'Category' in transactions.columns and 'Amount' in transactions.columns:
         results = transactions['Category'].apply(lambda x: categorize_50_30_20(x))
         transactions['Type'] = [r[0] for r in results]
@@ -219,9 +210,6 @@ def main():
         cat_series = transactions.groupby('Category')['Amount'].sum() / num_months
         cat_str = cat_series.apply(lambda x: f"${x:.2f}").to_string()
 
-    # ==========================
-    # VIEW 1: ANALYTICS DASHBOARD
-    # ==========================
     if st.session_state.current_view == "📊 Analytics Dashboard":
         if transactions.empty:
             st.info("👋 Upload a CSV file or add data manually to see your Dashboard.")
@@ -313,9 +301,6 @@ def main():
                 else:
                     st.warning("Benchmark data missing. Run fetch_data.py")
 
-    # ==========================
-    # VIEW 2: SAVINGS SIMULATOR
-    # ==========================
     elif st.session_state.current_view == "🎛️ Savings Simulator":
         if transactions.empty:
             st.info("👋 Upload data to use the Savings Simulator.")
@@ -335,9 +320,7 @@ def main():
                 st.metric(f"Monthly Savings", f"${potential_savings:,.2f}")
                 st.metric(f"Yearly Savings", f"${annual_savings:,.2f}", delta="Extra Cash!")
 
-    # ==========================
-    # VIEW 3: GEMINI CHAT AGENT
-    # ==========================
+
     elif st.session_state.current_view == "🤖 Gemini Chat Agent":
         st.subheader("💬 Chat with Gemini")
         st.caption("The agent analyzes your MONTHLY AVERAGE data to answer questions.")
@@ -348,16 +331,11 @@ def main():
         
         st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
 
-    # --- GLOBAL CHAT INPUT (AUTO-SWITCH LOGIC) ---
     if prompt := st.chat_input("Ask: 'Where can I save money?'"):
         
-        # 1. Switch the View State to Chat
         st.session_state.current_view = "🤖 Gemini Chat Agent"
-        
-        # 2. Append the user message
+      
         st.session_state.messages.append({"role": "user", "content": prompt})
-        
-        # 3. Prepare Context
         rag_context = ""
         if not benchmarks_df.empty:
              rag_context = f"\nOFFICIAL US BENCHMARKS (BLS 2023):\n{benchmarks_df.to_string(index=False)}"
@@ -379,7 +357,6 @@ def main():
         else:
             data_context = "User has NOT uploaded specific data yet. Answer general financial questions."
 
-        # 4. Generate Response
         try:
             full_prompt = f"""
             You are an expert Financial Agent powered by Gemini. 
