@@ -1,4 +1,5 @@
 # AI Budget Assistant
+* In collaboration with Prachi Bhavsar *
 
 Project Overview
 
